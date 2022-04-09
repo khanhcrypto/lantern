@@ -20,7 +20,7 @@ def findMSISdelta(B, n, d, logq):
 def findMLWEdelta(nu, n, d, logq):
     load("https://bitbucket.org/malb/lwe-estimator/raw/HEAD/estimator.py")
     n = n * d
-    q = 2^32
+    q = 2^logq
     stddev = sqrt(((2*nu+1)^2 - 1)/12)
     alpha = alphaf(sigmaf(stddev),q)
     set_verbose(1)
@@ -38,28 +38,28 @@ def findMLWEdelta(nu, n, d, logq):
 kappa = 128                             # security parameter
 d = 64                                  # dimension of R = Z[X]/(X^d + 1)
 l = 2                                   # number of irreducible factors of X^d + 1 modulo each q_i, we assume each q_i = 2l+1 (mod 4l)
-omega = ceil( (2^(2*kappa/d) -1) / 2 )  # maximum coefficient of a challenge. We want |\chal| = (2*omega+1)^(d/2) >= 2^kappa
+omega = 8                               # maximum coefficient of a challenge. We want |\chal| = (2*omega+1)^(d/2) >= 2^kappa
 C1 = 158                                # the heuristic bound on \sqrt(|| \sigma_{-1}(c)*c ||_1) 
 
 # Defining the log of the proof system modulus -- finding true values will come later 
 eta = 1                                 # number of prime divisors of q, usually 1 or 2
 logq1 = 32                              # log of the smallest prime divisor of q
 logq = 32                               # log of the proof system modulus q
-lmbda = 2 * ceil( kappa/(2*logq) )     # number of repetitions for boosting soundness, we assume lambda is even
+lmbda = 2 * ceil( kappa/(2*logq) )      # number of repetitions for boosting soundness, we assume lambda is even
 
 # Length and size of the committed messages
-m1 = 16                                # length of s1
-ell = 0                                # length of m 
-alpha = sqrt(1024)                     # norm of s1
+m1 = 16                                 # length of s1
+ell = 0                                 # length of m 
+alpha = sqrt(1024)                      # norm of s1
 
 # Parameters for proving norm bounds
-Z = 1                                  # number of exact norm proofs 
-BoundsToProve = [sqrt(2048)]           # define Z bounds B_1,...,B_Z
+Z = 1                                   # number of exact norm proofs 
+BoundsToProve = [sqrt(2048)]            # define Z bounds B_1,...,B_Z
 B_sum = 0
 for i in BoundsToProve:
     B_sum += i^2                                  
 B_sum = sqrt(B_sum)                    # quadratic mean of the bounds B_1,...,B_z
-N = 16                                 # sum n_1 + ... + n_z -- where n_i is the length of the vector to prove norm <= B_i
+N = 32                                 # sum n_1 + ... + n_z -- where n_i is the length of the vector to prove norm <= B_i
 n_bin = 0                              # length of the vector to prove binary coefficients 
 approximate_norm_proof = 0             # boolean to indicate if we perform approximate norm proofs
 B_approx = 1                           # bound B' for approximate norm proofs, ignored if the boolean is zero
@@ -79,8 +79,10 @@ stdev4 = gamma4 * sqrt(337) * B_approx
 # Finding MLWE dimension
 nu = 1                                 # randomness vector s2 with coefficients between -nu and nu
 kmlwe = 20
-#while findMLWEdelta(nu,kmlwe,d, logq) > 1.0045:
-#    kmlwe += 1                         # increasing the value of kmlwe until MLWE provides ~ 128-bit security
+#mlwe_hardness = 2
+#while mlwe_hardness > 1.0045:
+#    kmlwe += 1                         # increasing the kmlwe dimension until MLWE provides ~ 128-bit security
+#    mlwe_hardness = findMLWEdelta(nu,kmlwe,d, logq)
 
 # Finding an appropriate kmsis and gamma
 kmsis = 0
@@ -92,8 +94,8 @@ while secure == false:
     Bound1 = 2 * stdev1 * sqrt(2 * (m1 + Z) * d)
     Bound2 = 2 * stdev2 * sqrt(2 * m2 * d)
     Bound = 4 * C1 * sqrt(Bound1^2 + Bound2^2)
-    if findMSISdelta(Bound, kmsis, d, logq) < 1.0045 and Bound < 2^logq:
-        secure = true
+    if findMSISdelta(Bound, kmsis, d, logq) < 1.0045 and Bound < 2^logq:                                # increasing kmsis until we reach ~ 128-bit security
+        secure = true                                                                                   
 
 # Finding an appropriate compression variable gamma
 gamma = 2^logq 
@@ -105,61 +107,82 @@ while secure == false:
     Bound1 = 2 * stdev1 * sqrt(2 * (m1 + Z) * d)
     Bound2 = 2 * sqrt ( 2 * stdev2^2  *  (m2 - kmsis) * d + (2*gamma + 1)^2 * kmsis * d)
     Bound = 4 * C1 * sqrt(Bound1^2 + Bound2^2)
-    if findMSISdelta(Bound, kmsis, d, logq) < 1.0045 and Bound < 2^logq:
+    if findMSISdelta(Bound, kmsis, d, logq) < 1.0045 and Bound < 2^logq:                                # decreasing gamma until we reach ~ 128-bit security
         secure = true
 
 
-# Finding exact value for q, q1 and gamma and compression variables:
+# Finding exact value for q, q1 and gamma and Dilithium compression variables:
 find_true_gamma = 0
 q1 = 2^(logq1)
 while find_true_gamma == 0:
-    q1 =  4*l * int(2^(log(q1,2)) / (4*l)) + 2*l + 1            # we need q1 to be congruent to 2l+1 modulo 4l
+    q1 =  4*l * int(2^(log(q1,2)) / (4*l)) + 2*l + 1                                                    # we need q1 to be congruent to 2l+1 modulo 4l
     while is_prime(q1) == False :
         q1 -= 4*l
     if eta == 1:
         q = q1
     else:
-        q2 = 4*l * int(2^(logq)/(4*l*q1)) + 2*l  + 1        # we need q2 to be congruent to 2l+1 modulo 4l
+        q2 = 4*l * int(2^(logq)/(4*l*q1)) + 2*l  + 1                                                    # we need q2 to be congruent to 2l+1 modulo 4l
         while is_prime(q2) == False :
             q2 -= 4*l
         q = q1 * q2 
-    Div_q = divisors( (q-1)/2)                                  # we want to find a divisor of (q-1)/2 close to gamma
+    Div_q = divisors( (q-1)/2)                                                                          # we want to find a divisor of (q-1)/2 close to gamma
     for i in Div_q:
         if gamma/2 <= i and i <= gamma:
             find_true_gamma = i
 gamma = find_true_gamma 
-D = log(2*gamma/(omega*d),2)
+D = int( log(2*gamma/(omega*d), 2) )
 tau = omega * nu * d
 
-# Checking soundness conditions
+# Checking knowledge soundness conditions
 rho = sqrt( 1 - log(2^(-kappa)) / 128 )                 
 Barp = 2 * sqrt(256/26) * rho * stdev3 
 
 if q <  41 * (n_bin + N + Z) * d * Barp:
     print("ERROR: can't use Lemma 2.2.8")
+
 if q <= Barp^2 + Barp*sqrt(n_bin*d):
     print("ERROR: can't prove P_s + P_m + f has binary coefficients")
+
 if q <= Barp^2 + Barp*sqrt(d):
     print("ERROR: can't prove all \theta_i have binary coefficients")
+
 for bound in BoundsToProve:
     if q <= 3 * bound^2 + Barp^2:
         print("ERROR: can't prove (6.12")
 
 
-#Proof size
-GaussEntr = 4.13
-full_sized = kmsis * d * (logq - D) + (ell + 256/d + 1 + approximate_norm_proof * (256/d + 1) + lmbda + 1)* d * logq
-short_size1 = (m1 + Z) * d * ceil(log(GaussEntr * stdev1,2)) + (m2 - kmsis) * d * ceil(log(GaussEntr * stdev2,2)) 
-short_size2 = 256 * ceil(log(GaussEntr * stdev3,2)) + approximate_norm_proof * 256 * ceil(log(GaussEntr * stdev4,2))
 
-print("Total proof size in KB: ", round((full_sized + short_size1 + short_size2)/(2^13) , 2))
+print("---------- computed parameters ----------")
+print("q1: ", q)
+print("q: ", q)
+print("gamma: ", gamma)
+print("D: ", D)
+print("tau: ", tau)
+print("kmsis: ", kmsis)
+print("kmlwe: ", kmlwe)
 
-#Final security analysis with exact parameters
+print("---------- security analysis ----------")
+
+# Repetition rate
 rej_rate = exp(1/(2*gamma1^2)) * exp(1/(2*gamma2^2)) * exp(1/(2*gamma3^2)) * ((1-approximate_norm_proof) + approximate_norm_proof*exp(1/(2*gamma4^2)))
-rej_rate *= exp( kmsis * (2*tau + 1) * d / (2 * gamma) )
-print("Rejection rate: ", rej_rate.n())
+rej_rate = exp( kmsis * (2*tau + 1) * d / (2 * 2^20) )
+print("Rejection rate: ", round(rej_rate ,2 ))
 
+# Knowledge soundness error from Theorem 6.4.3
+soundness_error = 2 * 1/(2*omega+1)^(d/2) +  q1^(-d/l) + q1^(-lmbda) + 2^(-128) + approximate_norm_proof*2^(-256)
+print("Log of the knowledge soundness error: ", ceil(log(soundness_error, 2)) )
+
+# MSIS hardness
 Bound1 = 2 * stdev1 * sqrt(2 * (m1 + Z) * d)
 Bound2 = 2 * sqrt ( 2 * stdev2^2  *  (m2 - kmsis) * d + (2*gamma + 1)^2 * kmsis * d)
 Bound = 4 * C1 * sqrt(Bound1^2 + Bound2^2)
 print("Root Hermite factor for MSIS: ", round(findMSISdelta(Bound, kmsis, d, logq),6)) 
+print("Root Hermite factor for MLWE: ", round(mlwe_hardness,6)) 
+# Proof size
+print("---------- proof size ----------")
+GaussEntr = 4.13
+full_sized = kmsis * d * (logq - D) + (ell + 256/d + 1 + approximate_norm_proof * (256/d + 1) + lmbda + 1)* d * logq    
+short_size1 = (m1 + Z) * d * ceil(log(GaussEntr * stdev1,2)) + (m2 - kmsis) * d * ceil(log(GaussEntr * stdev2,2)) 
+short_size2 = 256 * ceil(log(GaussEntr * stdev3,2)) + approximate_norm_proof * 256 * ceil(log(GaussEntr * stdev4,2))
+
+print("Total proof size in KB: ", round((full_sized + short_size1 + short_size2)/(2^13) , 2))
