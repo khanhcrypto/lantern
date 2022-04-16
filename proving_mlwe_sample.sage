@@ -3,6 +3,57 @@
 # Concretely, we want to prove knowledge of a vector s such that
 # norm of ||(s,As-u)|| is at most B.
 
+# Computing the root Hermite factor based on the BKZ block size
+
+def GSAhermite(bs):
+  return (bs/(2*pi*exp(1))*(pi*bs)^(1/bs))^(1/(2*bs-2))
+
+def BDGLcost(bs):
+  return bs*log(sqrt(3/2),2)
+
+def SIShardnessINF(m, n, q, b):
+    omega = 0
+    b2 = 0
+    logq = log(q,2)
+    best = 9999
+    root_hermite_factor = 10
+    if b+b2 >= (q-1)/2:
+        return root_hermite_factor
+    for i in range(m+1,n + 5,5):
+        for bs in range(50, max(i,1000) + 5, 5):
+            cost = BDGLcost(bs)
+            if cost >= best:
+                break
+            h = 2*log(GSAhermite(bs),2)
+            d = min(i, floor(-0.5 + sqrt(0.25+2*m*logq/h)))                     # h * d*(d+1)/2 = m*logq
+            l = d*h + (m*logq - (d^2+d)/2*h)/d
+            sig = exp(l)/sqrt(d)
+            p  = 1 - erfc(b/(sqrt(2)*sig))
+            p2  = 1 - erfc((b+b2)/(sqrt(2)*sig))
+            s = ceil((15*sig/q+0.5)/10)
+            for j in range(1,10*s + s,s):
+                p += s*(erfc((i*q-b)/(sqrt(2)*sig)) - erfc((i*q+b)/(sqrt(2)*sig)))
+                p2 += s*(erfc((i*q-b-b2)/(sqrt(2)*sig)) - erfc((i*q+b+b2)/(sqrt(2)*sig)))
+            p2 -= p
+            s = 0
+            for i in range (0,omega+1):
+                s += binomial(d,i)*p^(d-i)*p2^i
+            cost -= min(0,log(s,2) + bs/2*log(4/3),2)
+            if cost < best:
+                best = cost 
+                bbs = bs
+                bd = d
+                sisdim = i
+                root_hermite_factor = GSAhermite(bbs)
+            print("SIS hardness in inf norm:");
+            print("  SIS lattice dimension used: ", sisdim);
+            print("  Number of non-zero Gram-Schmidt vectors: ", bd);
+            print("  Root Hermite factor: ", round(GSAhermite(bbs),6));
+            print("  BKZ block size:", bbs);
+            print("  Cost: ", best);
+    return root_hermite_factor
+        
+
 # Function for estimating the MSIS hardness given parameters:
 # a (n x m) matrix in \Rq along with the solution bound B. It returns the
 # root Hermite factor \delta. We use the methodology presented by
@@ -94,7 +145,7 @@ while secure == false:
     Bound1 = 2 * stdev1 * sqrt(2 * (m1 + Z) * d)
     Bound2 = 2 * stdev2 * sqrt(2 * m2 * d)
     Bound = 4 * C1 * sqrt(Bound1^2 + Bound2^2)
-    if findMSISdelta(Bound, kmsis, d, logq) < 1.0045 and Bound < 2^logq:                                # increasing kmsis until we reach ~ 128-bit security
+    if SIShardnessINF(kmsis*d,(m1+m2)*d,2^logq,Bound) < 1.0045 and Bound < 2^logq:                           # increasing kmsis until we reach ~ 128-bit security
         secure = true                                                                                   
 
 # Finding an appropriate compression variable gamma
@@ -176,7 +227,7 @@ print("Log of the knowledge soundness error: ", ceil(log(soundness_error, 2)) )
 Bound1 = 2 * stdev1 * sqrt(2 * (m1 + Z) * d)
 Bound2 = 2 * sqrt ( 2 * stdev2^2  *  (m2 - kmsis) * d + (2*gamma + 1)^2 * kmsis * d)
 Bound = 4 * C1 * sqrt(Bound1^2 + Bound2^2)
-print("Root Hermite factor for MSIS: ", round(findMSISdelta(Bound, kmsis, d, logq),6)) 
+print("Root Hermite factor for MSIS: ", round(SIShardnessINF(kmsis*d,(m1+m2)*d,q,Bound),6)) 
 print("Root Hermite factor for MLWE: ", round(mlwe_hardness,6)) 
 # Proof size
 print("---------- proof size ----------")
