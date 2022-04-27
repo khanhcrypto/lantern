@@ -11,7 +11,7 @@
 
 
 def findMSISdelta(B, n, d, logq):
-	logC = log(B, 2)		
+	logC = log(B, 2)	
 	logdelta = logC^2 / (4*n*d*logq)
 	return 2^logdelta
 
@@ -37,6 +37,11 @@ def findMLWEdelta(nu, n, d, logq):
     return max(delta_enum1,delta_enum2,delta_enum3,delta_sieve1,delta_sieve2,delta_sieve3)
 
 
+# Parameters for the encryption scheme
+p = 3329                                # prime for encryption scheme
+N = 8                                   # height of the matrix A
+M = 18                                  # width of the matrix A
+rand_coeff = 2                          # coefficients of the randomness vectors, between -rand_coeff and rand_coeff
 
 
 # Security parameter, ring dimension of \R and challenge space
@@ -48,30 +53,30 @@ eta = 140                               # the heuristic bound on \sqrt[2k](|| \s
 
 # Defining the log of the proof system modulus -- finding true values will come later 
 n = 1                                   # number of prime divisors of q, usually 1 or 2
-logq1 = 32                              # log of the smallest prime divisor of q
-logq = 32                               # log of the proof system modulus q
+logq1 = 35                              # log of the smallest prime divisor of q
+logq = 35                               # log of the proof system modulus q
 lmbda = 2 * ceil( kappa/(2*logq1) )     # number of repetitions for boosting soundness, we assume lambda is even
 
 # Length and size of the committed messages
-m1 = 16                                 # length of s1
+m1 = M + 1                              # length of s1 = (randomness of length N - N = 5, message)
 m2 = 0                                  # length of s2, to be determined
 ell = 0                                 # length of m 
-alpha = sqrt(1024)                      # norm of s1
+alpha = sqrt(rand_coeff^2*M*d + d)  # norm of s1
 
 # Parameters for proving norm bounds
-Z = 1                                   # number of exact norm proofs 
-BoundsToProve = [ sqrt(2048) ]          # exact bounds B_i to prove for i=1,2,...,Z
-n_bin = 0                               # length of a vector to prove binary coefficients                           
-alpha3 = sqrt(2048 + Z*d)               # bound on the vector s3 = (s,As - u, bin. decomp. of B^2 - ||(s,As-u)||^2)
-nex = 32 + 1                            # length of the vector s3
-approximate_norm_proof = 0              # boolean to indicate if we perform approximate norm proofs
-alpha4 = 1                              # bound on the vector s4, we set it to be 1 if the boolean is zero
+Z = 1                                           # number of exact norm proofs 
+BoundsToProve = [rand_coeff*sqrt(M*d)]          # exact bounds B_i to prove for i=1,2,...,Z
+n_bin = 1                                       # length of a vector to prove binary coefficients                           
+alpha3 = sqrt(rand_coeff^2*M*d + (n_bin + Z)*d) # bound on the vector s3 = (s,As - u, bin. decomp. of B^2 - ||(s,As-u)||^2)
+nex = M + n_bin + Z                             # length of the vector s3
+approximate_norm_proof = 1                      # boolean to indicate if we perform approximate norm proofs
+alpha4 = rand_coeff*(M*d+1)*sqrt((N+1)*d)/2     # bound on the vector s4, we set it to be 1 if the boolean is zero
 
 # Parameters for rejection sampling
-gamma1 = 10                             # rejection sampling for s1
+gamma1 = 31                             # rejection sampling for s1
 gamma2 = 1                              # rejection sampling for s2
-gamma3 = 6                              # rejection sampling for Rs3
-gamma4 = 1                              # rejection sampling for R's4 -- ignore if approximate_norm_proof = 0 
+gamma3 = 16                             # rejection sampling for Rs3
+gamma4 = 0.7                            # rejection sampling for R's4 -- ignore if approximate_norm_proof = 0 
 
 # Setting the standard deviations, apart from stdev2
 stdev1 = gamma1 * eta * sqrt(alpha^2 + Z*d)
@@ -82,7 +87,7 @@ stdev4 = gamma4 * sqrt(337) * alpha4
 # Finding MLWE dimension
 print("Computing the Module-LWE dimension...")
 nu = 1                                  # randomness vector s2 with coefficients between -nu and nu
-kmlwe =  0                              # dimension of the Module-LWE problem
+kmlwe =  21                             # dimension of the Module-LWE problem
 kmlwe_hardness = 2
 while kmlwe_hardness > 1.0045:          # increasing the kmlwe dimension until MLWE provides ~ 128-bit security
     kmlwe += 1                          
@@ -91,7 +96,7 @@ while kmlwe_hardness > 1.0045:          # increasing the kmlwe dimension until M
     
     
 
-# Finding an appropriate Module-SIS dimension kmsis
+# Finding an appropriate Module-SIS dimension n
 print("Computing the Module-SIS dimension...")
 kmsis = 0                                                                                       # dimension of the Module-SIS problem
 D = 0                                                                                           # dropping low-order bits of t_A
@@ -104,6 +109,7 @@ while value_kmsis_found == false:                                               
     Bound1 =  2 * stdev1 * sqrt(2 * (m1 + Z) * d)                                               # bound on bar{z}_1
     Bound2 =  2 * stdev2 * sqrt(2 * m2 * d) + 2^D * eta * sqrt(kmsis*d) + gamma * sqrt(kmsis*d) # bound on bar{z}_2 = (bar{z}_{2,1},bar{z}_{2,2})
     Bound = 4 * eta * sqrt(Bound1^2 + Bound2^2)                                                 # bound on the extracted MSIS solution
+    print(log(4*eta*Bound1,2).n())
     if findMSISdelta(Bound,kmsis,d,logq) < 1.0045 and Bound < 2^logq:                           # until we reach ~ 128-bit security
         value_kmsis_found = true                                                                # it is secure 
 
@@ -126,9 +132,9 @@ while value_gamma_found == false:                                               
 # Finding exact values for q, q1 and gamma:
 print("Computing moduli q1, q etc. ...")
 true_gamma_found = false                                                                  # Boolean for finding correct gamma
-q1 = 2^(logq1) + (2*l + 1)                                                                # we need q1 to be congruent to 2l+1 modulo 4l
+q1 = 4*l*int(2^logq1/(4*l)) + (2*l + 1)                                                   # we need q1 to be congruent to 2l+1 modulo 4l
 while true_gamma_found == false:
-    q1 =  q1 - 4*l                                                                        # find the next candidate for q1
+    q1 =  q1 - 4*l                                                                        
     while is_prime(q1) == False :                                                         # we need q1 to be prime 
         q1 -= 4*l
     if n == 1:                                                                            # if number of divisors of q is 1, then q = q1
@@ -177,6 +183,11 @@ for bound in BoundsToProve:
     if q <= 3 * bound^2 + Be^2:
         print("ERROR: can't prove || E^(i)_s*s + E^(i)_m*m +  v^(i)|| <= B_i")
 
+# Checking whether there is no modulo overflow
+print("Checking modulo overflow conditions...")
+Bd = 2 * 14 * stdev4
+if q <= p * (rand_coeff*sqrt(M*d)/2 + 1 + Bd):
+    print("ERROR: modulo overflow")
 
 
 # Output computed parameters 
