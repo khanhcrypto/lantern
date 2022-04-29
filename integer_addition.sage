@@ -1,7 +1,6 @@
-# This is the script for computing the non-interactiZ proof size
-# of proving knowledge of a MLWE sample described in Section 7.1.
-# Concretely, we want to proZ knowledge of a vector s such that
-# norm of ||(s,As-u)|| is at most B.
+# This is the script for computing the non-interactive proof size
+# of proving integer addition in Section 8.3.
+
 
 
 # Function for estimating the MSIS hardness given parameters:
@@ -64,7 +63,7 @@ alpha = sqrt(3*k*d)                     # norm of s1
 Z = 0                                   # number of exact norm proofs 
 BoundsToProve = []                      # exact bounds B_i to prove for i=1,2,...,Z
 n_bin = 4*k                             # length of a vector to prove binary coefficients                           
-alpha3 = sqrt(4*k)                      # bound on the vector s3
+alpha3 = sqrt(4*k*d)                    # bound on the vector s3
 nex = n_bin                             # length of the vector s3
 approximate_norm_proof = 0              # boolean to indicate if we perform approximate norm proofs
 alpha4 = 1                              # bound on the vector s4, we set it to be 1 if the boolean is zero
@@ -149,15 +148,15 @@ while true_gamma_found == false:
 
 # Given kmsis and gamma, find the largest possible D which makes the MSIS solution small
 print("Computing the parameter D...")
-D = logq                                                                                        # initialisation
-value_D_found = false                                                                           # Boolean for finding D
-while value_D_found == false:                                                                   # searching for right D
-    D -= 1                                                                                      # decrease the value of D
-    Bound1 =  2 * stdev1 * sqrt(2 * (m1 + Z) * d)                                               # bound on bar{z}_1
-    Bound2 =  2 * stdev2 * sqrt(2 * m2 * d) + 2^D * eta * sqrt(kmsis*d) + gamma * sqrt(kmsis*d) # bound on bar{z}_2
-    Bound = 4 * eta * sqrt(Bound1^2 + Bound2^2)                                                 # bound on the extracted MSIS solution
-    if findMSISdelta(Bound,kmsis,d,logq) < 1.0045 and Bound < 2^logq:                           # until we reach ~ 128-bit security                                           
-        value_D_found = true                                                                    # it is secure
+D = logq                                                                                            # initialisation
+value_D_found = false                                                                               # Boolean for finding D
+while value_D_found == false:                                                                       # searching for right D
+    D -= 1                                                                                          # decrease the value of D
+    Bound1 =  2 * stdev1 * sqrt(2 * (m1 + Z) * d)                                                   # bound on bar{z}_1
+    Bound2 =  2 * stdev2 * sqrt(2 * m2 * d) + 2^D * eta * sqrt(kmsis*d) + gamma * sqrt(kmsis*d)     # bound on bar{z}_2
+    Bound = 4 * eta * sqrt(Bound1^2 + Bound2^2)                                                     # bound on the extracted MSIS solution
+    if findMSISdelta(Bound,kmsis,d,logq) < 1.0045 and Bound < 2^logq and 2^(D-1)*omega*d < gamma:   # until we reach ~ 128-bit security                                           
+        value_D_found = true                                                                        # it is secure
 
 
 
@@ -193,7 +192,6 @@ print("Length of the randomness vector s2: ", m2)
 print("Log2 of the standard deviation stdev1: ",round(log(stdev1,2),2))
 print("Log2 of the standard deviation stdev2: ",round(log(stdev2,2),2))
 print("Log2 of the standard deviation stdev3: ",round(log(stdev3,2),2))
-print("Infinity norm of the hint vector: ",ceil((2^(D-1)*omega*d + 16*stdev2)/gamma) + 1)
 
 
 # Output security analysis
@@ -220,10 +218,9 @@ print("Root Hermite factor for MLWE: ", round(kmlwe_hardness,6))
 print("---------- proof size -------------------")
 full_size = kmsis * d * (logq - D) + (ell + 256/d + 1 + approximate_norm_proof * 256/d + lmbda + 1) * d * logq   
 challenge = ceil(log(2*omega+1,2)) * d 
-short_size1 = (m1 + Z) * d * (ceil(log(stdev1,2) + 2.25)) + (m2 - kmsis) * d * (ceil(log(stdev2,2) + 2.25)) 
-short_size2 = 256 * (ceil(log(stdev3,2) + 2.25)) + approximate_norm_proof * 256 * (ceil(log(stdev4,2) + 2.25))
-hint_coeff = ceil((2^(D-1)*omega*d + 16*stdev2)/gamma) + 1
-hint = ceil(log(2*hint_coeff+1,2)) * kmsis * d
+short_size1 = (m1 + Z) * d * (ceil(log(stdev1,2) + 2.57)) + (m2 - kmsis) * d * (ceil(log(stdev2,2) + 2.57)) 
+short_size2 = 256 * (ceil(log(stdev3,2) + 2.57)) + approximate_norm_proof * 256 * (ceil(log(stdev4,2) + 2.57))
+hint = 2.25 * kmsis * d
 
 print("Total proof size in KB: ", round((full_size + challenge + short_size1 + short_size2 + hint)/(2^13) , 2))
 print("full-sized polynomials in KB: ", round(full_size/(2^13) , 2))

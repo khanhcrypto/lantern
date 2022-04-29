@@ -1,7 +1,5 @@
-# This is the script for computing the non-interactiZ proof size
-# of proving knowledge of a MLWE sample described in Section 7.1.
-# Concretely, we want to proZ knowledge of a vector s such that
-# norm of ||(s,As-u)|| is at most B.
+# This is the script for computing the non-interactive proof size
+# of proving integer multiplication in Section 8.3. Here, we commit to the carry vector.
 
 
 # Function for estimating the MSIS hardness given parameters:
@@ -11,7 +9,7 @@
 
 
 def findMSISdelta(B, n, d, logq):
-	logC = log(B, 2)		
+	logC = log(B, 2)	
 	logdelta = logC^2 / (4*n*d*logq)
 	return 2^logdelta
 
@@ -37,7 +35,9 @@ def findMLWEdelta(nu, n, d, logq):
     return max(delta_enum1,delta_enum2,delta_enum3,delta_sieve1,delta_sieve2,delta_sieve3)
 
 
-
+# parameters related to the integers
+N = 512                                 # bit-length of an integer
+k = 16                                  # 2*N = k*d
 
 # Security parameter, ring dimension of \R and challenge space
 kappa = 128                             # security parameter
@@ -48,30 +48,30 @@ eta = 140                               # the heuristic bound on \sqrt[2k](|| \s
 
 # Defining the log of the proof system modulus -- finding true values will come later 
 n = 1                                   # number of prime divisors of q, usually 1 or 2
-logq1 = 32                              # log of the smallest prime divisor of q
-logq = 32                               # log of the proof system modulus q
+logq1 = 33                              # log of the smallest prime divisor of q
+logq = 33                               # log of the proof system modulus q
 lmbda = 2 * ceil( kappa/(2*logq1) )     # number of repetitions for boosting soundness, we assume lambda is even
 
 # Length and size of the committed messages
-m1 = 16                                 # length of s1
+m1 = 3*k                                # length of s1 = (randomness of length N - N = 5, message)
 m2 = 0                                  # length of s2, to be determined
 ell = 0                                 # length of m 
-alpha = sqrt(1024)                      # norm of s1
+alpha = sqrt(3*k*d)                     # norm of s1
 
 # Parameters for proving norm bounds
-Z = 1                                   # number of exact norm proofs 
-BoundsToProve = [ sqrt(2048) ]          # exact bounds B_i to prove for i=1,2,...,Z
-n_bin = 0                               # length of a vector to prove binary coefficients                           
-alpha3 = sqrt(2048 + Z*d)               # bound on the vector s3 = (s,As - u, bin. decomp. of B^2 - ||(s,As-u)||^2)
-nex = 32 + 1                            # length of the vector s3
-approximate_norm_proof = 0              # boolean to indicate if we perform approximate norm proofs
-alpha4 = 1                              # bound on the vector s4, we set it to be 1 if the boolean is zero
+Z = 0                                           # number of exact norm proofs 
+BoundsToProve = []                              # exact bounds B_i to prove for i=1,2,...,Z
+n_bin = 3*k                                     # length of a vector to prove binary coefficients                           
+alpha3 = sqrt(n_bin*d)                          # bound on the vector s3
+nex = n_bin                                     # length of the vector s3
+approximate_norm_proof = 1                      # boolean to indicate if we perform approximate norm proofs
+alpha4 = (k*d/2+1)*sqrt(k*d)                    # bound on the vector s4, we set it to be 1 if the boolean is zero
 
 # Parameters for rejection sampling
-gamma1 = 10                             # rejection sampling for s1
-gamma2 = 1                              # rejection sampling for s2
-gamma3 = 6                              # rejection sampling for Rs3
-gamma4 = 1                              # rejection sampling for R's4 -- ignore if approximate_norm_proof = 0 
+gamma1 = 12                             # rejection sampling for s1
+gamma2 = 1.1                            # rejection sampling for s2
+gamma3 = 8                              # rejection sampling for Rs3
+gamma4 = 32                             # rejection sampling for R's4 -- ignore if approximate_norm_proof = 0 
 
 # Setting the standard deviations, apart from stdev2
 stdev1 = gamma1 * eta * sqrt(alpha^2 + Z*d)
@@ -91,7 +91,7 @@ while kmlwe_hardness > 1.0045:          # increasing the kmlwe dimension until M
     
     
 
-# Finding an appropriate Module-SIS dimension kmsis
+# Finding an appropriate Module-SIS dimension n
 print("Computing the Module-SIS dimension...")
 kmsis = 0                                                                                       # dimension of the Module-SIS problem
 D = 0                                                                                           # dropping low-order bits of t_A
@@ -126,9 +126,9 @@ while value_gamma_found == false:                                               
 # Finding exact values for q, q1 and gamma:
 print("Computing moduli q1, q etc. ...")
 true_gamma_found = false                                                                  # Boolean for finding correct gamma
-q1 = 2^(logq1) + (2*l + 1)                                                                # we need q1 to be congruent to 2l+1 modulo 4l
+q1 = 4*l*int(2^logq1/(4*l)) + (2*l + 1)                                                   # we need q1 to be congruent to 2l+1 modulo 4l
 while true_gamma_found == false:
-    q1 =  q1 - 4*l                                                                        # find the next candidate for q1
+    q1 =  q1 - 4*l                                                                        
     while is_prime(q1) == False :                                                         # we need q1 to be prime 
         q1 -= 4*l
     if n == 1:                                                                            # if number of divisors of q is 1, then q = q1
@@ -159,6 +159,7 @@ while value_D_found == false:                                                   
 
 
 
+
 # Checking knowledge soundness conditions from Theorem 5.3
 print("Checking knowledge soundness conditions...")
 t = sqrt( 1 - log(2^(-kappa)) / 128 )                 
@@ -177,6 +178,11 @@ for bound in BoundsToProve:
     if q <= 3 * bound^2 + Be^2:
         print("ERROR: can't prove || E^(i)_s*s + E^(i)_m*m +  v^(i)|| <= B_i")
 
+# Checking whether there is no modulo overflow
+print("Checking modulo overflow conditions...")
+Bd = 2 * 14 * stdev4
+if q <= k*d + 1 + 3*Bd:
+    print("ERROR: modulo overflow")
 
 
 # Output computed parameters 
@@ -193,11 +199,12 @@ print("Log2 of the standard deviation stdev2: ",round(log(stdev2,2),2))
 print("Log2 of the standard deviation stdev3: ",round(log(stdev3,2),2))
 
 
+
 # Output security analysis
 print("---------- security analysis ------------")
 
 # Repetition rate
-rep_rate = exp(sqrt((2*kappa+1)/log(e,2))/gamma1 + 1/(2*gamma1^2)) * exp(1/(2*gamma2^2)) * exp(1/(2*gamma3^2)) * ((1-approximate_norm_proof) + approximate_norm_proof*exp(1/(2*gamma4^2)))
+rep_rate = exp(sqrt((2*kappa+1)/log(e,2))/gamma1 + 1/(2*gamma1^2)) * exp(1/(2*gamma2^2)) * exp(1/(2*gamma3^2)) * ((1-approximate_norm_proof) + approximate_norm_proof*exp(sqrt((2*kappa+1)/log(e,2))/gamma4 + 1/(2*gamma4^2)))
 print("Repetition rate: ", round(rep_rate ,2 ))
 
 # Knowledge soundness error from Theorem 5.3
