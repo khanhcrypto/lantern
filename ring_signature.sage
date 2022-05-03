@@ -1,7 +1,4 @@
-# This is the script for computing the non-interactive proof size
-# of proving knowledge of a MLWE sample described in Section 7.1.
-# Concretely, we want to proZ knowledge of a vector s such that
-# norm of ||(s,As-u)|| is at most B.
+# This is the script for computing the ring signature sizes
 
 
 # Function for estimating the MSIS hardness given parameters:
@@ -36,7 +33,12 @@ def findMLWEdelta(nu, n, d, logq):
     delta_sieve3 = L['dual']['delta_0']
     return max(delta_enum1,delta_enum2,delta_enum3,delta_sieve1,delta_sieve2,delta_sieve3)
 
-
+# Ring signature parameters
+p = 65437                               # modulus for the ring signature
+N = 1                                   # height of the matrix
+M = 18                                  # length of the secret key
+base = 8                                # base, should be divisible by d
+k = 7                                   # ring of size base^k                                                  
 
 
 # Security parameter, ring dimension of \R and challenge space
@@ -47,23 +49,23 @@ omega = 8                               # maximum coefficient of a challenge. We
 eta = 140                               # the heuristic bound on \sqrt[2k](|| \sigma_{-1}(c^k)*c^k ||_1) for k = 32
 
 # Defining the log of the proof system modulus -- finding true values will come later 
-n = 1                                   # number of prime divisors of q, usually 1 or 2
-logq1 = 32                              # log of the smallest prime divisor of q
+n = 2                                   # number of prime divisors of q, usually 1 or 2
+logq1 = 16                              # log of the smallest prime divisor of q which will be p = 269
 logq = 32                               # log of the proof system modulus q
 lmbda = 2 * ceil( kappa/(2*logq1) )     # number of repetitions for boosting soundness, we assume lambda is even
 
 # Length and size of the committed messages
-m1 = 16                                 # length of s1
+m1 = M + k                              # length of s1
 m2 = 0                                  # length of s2, to be determined
-ell = 0                                 # length of m 
-alpha = sqrt(1024)                      # norm of s1
+ell = k - 1                             # length of m 
+alpha = sqrt(M*d+k)                     # norm of s1
 
 # Parameters for proving norm bounds
-Z = 1                                   # number of exact norm proofs 
-BoundsToProve = [ sqrt(2048) ]          # exact bounds B_i to prove for i=1,2,...,Z
-n_bin = 0                               # length of a vector to prove binary coefficients                           
-alpha3 = sqrt(2048 + Z*d)               # bound on the vector s3 = (s,As - u, bin. decomp. of B^2 - ||(s,As-u)||^2)
-nex = 32 + 1                            # length of the vector s3
+Z = 0                                   # number of exact norm proofs 
+BoundsToProve = []                      # exact bounds B_i to prove for i=1,2,...,Z
+n_bin = M+k                             # length of a vector to prove binary coefficients                           
+alpha3 = alpha                          # bound on the vector s3 = (s,u1,u2,...,uk)
+nex = n_bin                             # length of the vector s3
 approximate_norm_proof = 0              # boolean to indicate if we perform approximate norm proofs
 alpha4 = 1                              # bound on the vector s4, we set it to be 1 if the boolean is zero
 
@@ -82,7 +84,7 @@ stdev4 = gamma4 * sqrt(337) * alpha4
 # Finding MLWE dimension
 print("Computing the Module-LWE dimension...")
 nu = 1                                  # randomness vector s2 with coefficients between -nu and nu
-kmlwe =  0                              # dimension of the Module-LWE problem
+kmlwe =  19                              # dimension of the Module-LWE problem
 kmlwe_hardness = 2
 while kmlwe_hardness > 1.0045:          # increasing the kmlwe dimension until MLWE provides ~ 128-bit security
     kmlwe += 1                          
@@ -104,6 +106,7 @@ while value_kmsis_found == false:                                               
     Bound1 =  2 * stdev1 * sqrt(2 * (m1 + Z) * d)                                               # bound on bar{z}_1
     Bound2 =  2 * stdev2 * sqrt(2 * m2 * d) + 2^D * eta * sqrt(kmsis*d) + gamma * sqrt(kmsis*d) # bound on bar{z}_2 = (bar{z}_{2,1},bar{z}_{2,2})
     Bound = 4 * eta * sqrt(Bound1^2 + Bound2^2)                                                 # bound on the extracted MSIS solution
+    print(log(4*eta*Bound1,2).n())
     if findMSISdelta(Bound,kmsis,d,logq) < 1.0045 and Bound < 2^logq:                           # until we reach ~ 128-bit security
         value_kmsis_found = true                                                                # it is secure 
 
@@ -124,20 +127,15 @@ while value_gamma_found == false:                                               
 
 
 # Finding exact values for q, q1 and gamma:
-print("Computing moduli q1, q etc. ...")
-true_gamma_found = false                                                                  # Boolean for finding correct gamma
-q1 = 2^(logq1) + (2*l + 1)                                                                # we need q1 to be congruent to 2l+1 modulo 4l
-while true_gamma_found == false:
-    q1 =  q1 - 4*l                                                                        # find the next candidate for q1
-    while is_prime(q1) == False :                                                         # we need q1 to be prime 
-        q1 -= 4*l
-    if n == 1:                                                                            # if number of divisors of q is 1, then q = q1
-        q = q1
-    else:
-        q2 = 4*l * int(2^(logq)/(4*l*q1)) + 2*l  + 1                                      # we need q2 to be congruent to 2l+1 modulo 4l
-        while is_prime(q2) == False :                                                     # we need q2 to be prime
-            q2 -= 4*l
-        q = q1 * q2                                                                       # if number of divisors of q is 2, then q = q1*q2 
+print("Computing moduli q, gamma etc. ...")
+true_gamma_found = false                                                                  # Boolean for finding correct gamma        
+q1 = p                                                                                    # we set q1 = 269       
+q2 = 4*l * int(2^(logq)/(4*l*q1)) + 2*l  + 1                                                
+while true_gamma_found == false:   
+    q2 -= 4*l                                                                             # we need q2 to be congruent to 2l+1 modulo 4l
+    while is_prime(q2) == False :                                                         # we need q2 to be prime
+        q2 -= 4*l
+    q = q1 * q2                                                                           # if number of divisors of q is 2, then q = q1*q2 
     Div_q = divisors(q-1)                                                                 # consider divisors of q-1
     for i in Div_q:                 
         if gamma*4/5 < i and i <= gamma and is_even(i):                                   # find a divisor which is close to gamma
@@ -166,6 +164,7 @@ Be = 2 * sqrt(256/26) * t * stdev3
 
 if q <  41 * nex * d * Be:
     print("ERROR: can't use Lemma 3.2.5")
+    print(log(41 * nex * d * Be,2).n())
 
 if q <= Be^2 + Be*sqrt(n_bin*d):
     print("ERROR: can't prove P_s*s + P_m*m + f has binary coefficients")
@@ -201,8 +200,8 @@ rep_rate = exp(sqrt((2*kappa+1)/log(e,2))/gamma1 + 1/(2*gamma1^2)) * exp(1/(2*ga
 print("Repetition rate: ", round(rep_rate ,2 ))
 
 # Knowledge soundness error from Theorem 5.3
-soundness_error = 2 * 1/(2*omega+1)^(d/2) +  q1^(-d/l) + q1^(-lmbda) + 2^(-128) + approximate_norm_proof*2^(-256)
-print("Log of the knowledge soundness error: ", ceil(log(soundness_error, 2)) )
+soundness_error = 2 * 1/(2*omega+1)^(d/2) +  q1^(-d/l) + q1^(-lmbda) + 2^(-128) + approximate_norm_proof*2^(-256) + (k-1)*q1^(-d/base)
+print("Log of the knowledge soundness error: ", ceil(log(soundness_error, 2)))
 
 # Exact Module-SIS and Module-LWE hardness
 Bound1 =  2 * stdev1 * sqrt(2 * (m1 + Z) * d)
@@ -221,7 +220,9 @@ short_size1 = (m1 + Z) * d * (ceil(log(stdev1,2) + 2.57)) + (m2 - kmsis) * d * (
 short_size2 = 256 * (ceil(log(stdev3,2) + 2.57)) + approximate_norm_proof * 256 * (ceil(log(stdev4,2) + 2.57))
 hint = 2.25 * kmsis * d
 
-print("Total proof size in KB: ", round((full_size + challenge + short_size1 + short_size2 + hint)/(2^13) , 2))
+print("Total signature size in KB: ", round((full_size + challenge + short_size1 + short_size2 + hint)/(2^13) , 2))
 print("full-sized polynomials in KB: ", round(full_size/(2^13) , 2))
 print("challenge c in KB: ", round(challenge/(2^13) , 2))
 print("short-sized polynomials in KB: ", round((short_size1 + short_size2 + hint)/(2^13) , 2))
+print("public key size in B: ", round(N*d*ceil(log(p,2))/2^3,2))
+print("secret key size in B: ", round(M*d*2/2^3,2))
