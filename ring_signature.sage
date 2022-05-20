@@ -84,7 +84,7 @@ stdev4 = gamma4 * sqrt(337) * alpha4
 # Finding MLWE dimension
 print("Computing the Module-LWE dimension...")
 nu = 1                                  # randomness vector s2 with coefficients between -nu and nu
-kmlwe =  19                              # dimension of the Module-LWE problem
+kmlwe =  0                              # dimension of the Module-LWE problem
 kmlwe_hardness = 2
 while kmlwe_hardness > 1.0045:          # increasing the kmlwe dimension until MLWE provides ~ 128-bit security
     kmlwe += 1                          
@@ -128,7 +128,7 @@ while value_gamma_found == false:                                               
 # Finding exact values for q, q1 and gamma:
 print("Computing moduli q, gamma etc. ...")
 true_gamma_found = false                                                                  # Boolean for finding correct gamma        
-q1 = p                                                                                    # we set q1 = 269       
+q1 = p                                                                                        
 q2 = 4*l * int(2^(logq)/(4*l*q1)) + 2*l  + 1                                                
 while true_gamma_found == false:   
     q2 -= 4*l                                                                             # we need q2 to be congruent to 2l+1 modulo 4l
