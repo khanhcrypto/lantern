@@ -36,9 +36,9 @@ def findMLWEdelta(nu, n, d, logq):
 # Ring signature parameters
 p = 65437                               # modulus for the ring signature
 N = 1                                   # height of the matrix
-M = 18                                  # length of the secret key
+M = 12                                  # length of the secret key
 base = 8                                # base, should be divisible by d
-k = 7                                   # ring of size base^k                                                  
+k = 5                                   # ring of size d*base^k                                                  
 
 
 # Security parameter, ring dimension of \R and challenge space
@@ -50,20 +50,20 @@ eta = 140                               # the heuristic bound on \sqrt[2k](|| \s
 
 # Defining the log of the proof system modulus -- finding true values will come later 
 n = 2                                   # number of prime divisors of q, usually 1 or 2
-logq1 = 16                              # log of the smallest prime divisor of q which will be p = 269
+logq1 = 16                              # log of the smallest prime divisor of q 
 logq = 32                               # log of the proof system modulus q
 lmbda = 2 * ceil( kappa/(2*logq1) )     # number of repetitions for boosting soundness, we assume lambda is even
 
 # Length and size of the committed messages
-m1 = M + k                              # length of s1
+m1 = M + k + 1                          # length of s1
 m2 = 0                                  # length of s2, to be determined
-ell = k - 1                             # length of m 
-alpha = sqrt(M*d+k)                     # norm of s1
+ell = k                                 # length of m 
+alpha = sqrt(M*d+k+1)                   # norm of s1
 
 # Parameters for proving norm bounds
 Z = 0                                   # number of exact norm proofs 
 BoundsToProve = []                      # exact bounds B_i to prove for i=1,2,...,Z
-n_bin = M+k                             # length of a vector to prove binary coefficients                           
+n_bin = M+k+1                           # length of a vector to prove binary coefficients                           
 alpha3 = alpha                          # bound on the vector s3 = (s,u1,u2,...,uk)
 nex = n_bin                             # length of the vector s3
 approximate_norm_proof = 0              # boolean to indicate if we perform approximate norm proofs
@@ -106,7 +106,6 @@ while value_kmsis_found == false:                                               
     Bound1 =  2 * stdev1 * sqrt(2 * (m1 + Z) * d)                                               # bound on bar{z}_1
     Bound2 =  2 * stdev2 * sqrt(2 * m2 * d) + 2^D * eta * sqrt(kmsis*d) + gamma * sqrt(kmsis*d) # bound on bar{z}_2 = (bar{z}_{2,1},bar{z}_{2,2})
     Bound = 4 * eta * sqrt(Bound1^2 + Bound2^2)                                                 # bound on the extracted MSIS solution
-    print(log(4*eta*Bound1,2).n())
     if findMSISdelta(Bound,kmsis,d,logq) < 1.0045 and Bound < 2^logq:                           # until we reach ~ 128-bit security
         value_kmsis_found = true                                                                # it is secure 
 
