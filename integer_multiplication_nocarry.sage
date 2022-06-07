@@ -1,5 +1,5 @@
 # This is the script for computing the non-interactive proof size
-# of proving integer multiplication in Section 8.3. Here, we commit to the carry vector.
+# of proving integer multiplication in Section 8.3. Here, we do not commit to the carry vector.
 
 
 # Function for estimating the MSIS hardness given parameters:

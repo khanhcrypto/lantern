@@ -70,8 +70,8 @@ alpha4 = (k*d/2+1)*sqrt(k*d)                    # bound on the vector s4, we set
 # Parameters for rejection sampling
 gamma1 = 10                             # rejection sampling for s1
 gamma2 = 1                              # rejection sampling for s2
-gamma3 = 4                             # rejection sampling for Rs3
-gamma4 = 32                            # rejection sampling for R's4 -- ignore if approximate_norm_proof = 0 
+gamma3 = 4                              # rejection sampling for Rs3
+gamma4 = 32                             # rejection sampling for R's4 -- ignore if approximate_norm_proof = 0 
 
 # Setting the standard deviations, apart from stdev2
 stdev1 = gamma1 * eta * sqrt(alpha^2 + Z*d)

@@ -37,7 +37,7 @@ def findMLWEdelta(nu, n, d, logq):
 
 
 # parameters related to the integers
-N = 64                                 # bit-length of an integer
+N = 64                                  # bit-length of an integer
 k = 1                                   # N = k*d
 
 # Security parameter, ring dimension of \R and challenge space
